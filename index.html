@@ -53,53 +53,111 @@
 <body id="app-body" class="bg-gray-900 flex items-center justify-center min-h-screen">
 
     <div class="w-full max-w-md mx-auto p-4 md:p-6 relative">
-        <!-- Settings Button in top right -->
-        <div id="settings-button-container" class="absolute top-4 right-4 z-10 fade-ui">
-            <button id="settings-btn" class="p-3 text-white/70 hover:text-white transition-colors duration-300 focus-ring-custom rounded-full hover:bg-white/10">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-            </button>
+        <!-- Goal Setting Screen -->
+        <div id="goal-screen">
+            <header class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-white">目標を設定</h1>
+            </header>
+            <div class="bg-white/10 p-8 rounded-lg shadow-lg backdrop-blur-md text-center">
+                <label for="goal-input" class="block text-white font-semibold mb-2">何ポモドーロ集中しますか？</label>
+                <input type="text" id="goal-input" value="4" class="w-full text-center bg-gray-700 text-white text-2xl p-3 rounded border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:outline-none" inputmode="numeric">
+                <div id="total-time-display" class="text-white/70 mt-4 h-12 flex flex-col items-center justify-center">
+                    <p>合計時間: <span id="total-time-value"></span></p>
+                    <p>(<span id="finish-time-value"></span> 終了予定)</p>
+                </div>
+                <button id="start-goal-btn" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold py-4 px-8 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105 focus-ring-custom">
+                    集中を開始する
+                </button>
+            </div>
         </div>
 
-        <header id="app-header" class="text-center mb-8 fade-ui">
-            <h1 class="text-3xl font-bold text-white">ポモドーロタイマー</h1>
-        </header>
+        <!-- Main Timer Screen (Initially Hidden) -->
+        <div id="main-timer-screen" class="hidden">
+            <!-- Settings Button in top right -->
+            <div id="settings-button-container" class="absolute top-4 right-4 z-10 fade-ui">
+                <button id="settings-btn" class="p-3 text-white/70 hover:text-white transition-colors duration-300 focus-ring-custom rounded-full hover:bg-white/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </button>
+            </div>
 
-        <main>
-            <!-- Timer Card -->
-            <div id="timer-card" class="bg-white/10 p-6 rounded-lg shadow-lg backdrop-blur-md">
-                <!-- Mode Buttons -->
-                <div id="mode-buttons-container" class="flex justify-center bg-black/20 p-1.5 rounded-full mb-6 fade-ui">
-                    <button id="pomodoro-btn" class="mode-button flex-1 py-2 px-4 text-sm font-bold rounded-full transition-colors duration-300 focus-ring-custom text-white" data-mode="pomodoro">ポモドーロ</button>
-                    <button id="short-break-btn" class="mode-button flex-1 py-2 px-4 text-sm font-bold rounded-full transition-colors duration-300 focus-ring-custom text-white" data-mode="shortBreak">短い休憩</button>
-                    <button id="long-break-btn" class="mode-button flex-1 py-2 px-4 text-sm font-bold rounded-full transition-colors duration-300 focus-ring-custom text-white" data-mode="longBreak">長い休憩</button>
-                </div>
+            <header id="app-header" class="text-center mb-8 fade-ui">
+                <h1 class="text-3xl font-bold text-white">ポモドーロタイマー</h1>
+            </header>
 
-                <!-- Timer Display with Visual Progress -->
-                <div class="relative flex items-center justify-center w-64 h-64 md:w-72 md:h-72 mx-auto my-8">
-                    <svg class="absolute top-0 left-0 w-full h-full" viewBox="0 0 100 100">
-                        <circle cx="50" cy="50" r="45" class="fill-white/10" />
-                        <path id="progress-path" />
-                    </svg>
-                    <p id="timer-display" class="relative text-7xl md:text-8xl font-extrabold text-white tracking-tighter fade-ui">25:00</p>
-                </div>
+            <main>
+                <!-- Timer Card -->
+                <div id="timer-card" class="bg-white/10 p-6 rounded-lg shadow-lg backdrop-blur-md">
+                    <!-- Mode Buttons -->
+                    <div id="mode-buttons-container" class="flex justify-center bg-black/20 p-1.5 rounded-full mb-6 fade-ui">
+                        <button id="pomodoro-btn" class="mode-button flex-1 py-2 px-4 text-sm font-bold rounded-full transition-colors duration-300 focus-ring-custom text-white" data-mode="pomodoro">ポモドーロ</button>
+                        <button id="short-break-btn" class="mode-button flex-1 py-2 px-4 text-sm font-bold rounded-full transition-colors duration-300 focus-ring-custom text-white" data-mode="shortBreak">短い休憩</button>
+                        <button id="long-break-btn" class="mode-button flex-1 py-2 px-4 text-sm font-bold rounded-full transition-colors duration-300 focus-ring-custom text-white" data-mode="longBreak">長い休憩</button>
+                    </div>
+                    
+                    <!-- Progress Info -->
+                    <div id="progress-info" class="text-center text-white/80 mb-4 h-12 flex items-center justify-center">
+                        <p id="remaining-sessions"></p>
+                    </div>
 
-                <!-- Control Buttons -->
-                <div id="control-buttons-container" class="flex items-center justify-center space-x-4 fade-ui">
-                    <button id="start-pause-btn" class="w-48 bg-white text-red-500 text-2xl font-bold py-4 px-8 rounded-lg shadow-md hover:bg-gray-200 transition-all duration-300 transform hover:scale-105 focus-ring-custom">
-                        開始
-                    </button>
-                     <button id="reset-btn" class="p-4 text-white/70 hover:text-white transition-colors duration-300 focus-ring-custom rounded-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                    <!-- Timer Display with Visual Progress -->
+                    <div class="relative flex items-center justify-center w-64 h-64 md:w-72 md:h-72 mx-auto my-8">
+                        <svg class="absolute top-0 left-0 w-full h-full" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="45" class="fill-white/10" />
+                            <path id="progress-path" />
                         </svg>
-                    </button>
-                </div>
-            </div>
+                        <p id="timer-display" class="relative text-7xl md:text-8xl font-extrabold text-white tracking-tighter fade-ui">25:00</p>
+                        <!-- Session Notification -->
+                        <div id="session-notification" class="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-500 pointer-events-none">
+                            <div class="bg-black/50 text-white text-lg font-bold py-4 px-8 rounded-lg backdrop-blur-sm text-center">
+                                <p id="session-name" class="text-2xl mb-2"></p>
+                                <p id="notification-remaining-sessions" class="text-base font-normal"></p>
+                            </div>
+                        </div>
+                    </div>
 
-            <div id="counter-container" class="text-center mt-6 fade-ui">
-                <p id="pomodoro-counter" class="text-white/80 text-lg font-semibold">ポモドーロ #1</p>
+                    <!-- Control Buttons -->
+                    <div id="control-buttons-container" class="flex items-center justify-center space-x-4 fade-ui">
+                        <button id="reset-btn" class="p-4 text-white/70 hover:text-white transition-colors duration-300 focus-ring-custom rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                            </svg>
+                        </button>
+                        <button id="start-pause-btn" class="w-48 bg-white text-red-500 text-2xl font-bold py-4 px-8 rounded-lg shadow-md hover:bg-gray-200 transition-all duration-300 transform hover:scale-105 focus-ring-custom">
+                            開始
+                        </button>
+                         <button id="skip-btn" class="p-4 text-white/70 hover:text-white transition-colors duration-300 focus-ring-custom rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="counter-container" class="text-center mt-6 fade-ui">
+                    <p id="pomodoro-counter" class="text-white/80 text-lg font-semibold">ポモドーロ #1</p>
+                </div>
+            </main>
+        </div>
+        
+        <!-- Goal Completed Screen -->
+        <div id="goal-completed-screen" class="hidden">
+            <header class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-white">お疲れ様でした！</h1>
+            </header>
+            <div class="bg-white/10 p-8 rounded-lg shadow-lg backdrop-blur-md text-center text-white">
+                <p class="text-lg">目標を達成しました。</p>
+                <div class="my-6 text-xl space-y-2">
+                    <p>実行セッション: <span id="completed-sessions"></span></p>
+                    <p>合計時間: <span id="completed-time"></span></p>
+                </div>
+                <button id="add-sessions-btn" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold py-4 px-8 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105 focus-ring-custom">
+                    セッションを追加する
+                </button>
+                <button id="end-session-btn" class="w-full mt-4 bg-gray-600 hover:bg-gray-700 text-white text-xl font-bold py-4 px-8 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105 focus-ring-custom">
+                    終了
+                </button>
             </div>
-        </main>
+        </div>
     </div>
 
     <!-- Settings Modal -->
@@ -131,6 +189,16 @@
                         <button class="adjust-btn p-2 rounded-md bg-gray-700 hover:bg-gray-600" data-target="long-break-duration-input" data-amount="1">+</button>
                     </div>
                 </div>
+                <div class="pt-4">
+                    <label for="auto-cycle-toggle" class="flex items-center justify-between cursor-pointer">
+                        <span class="font-semibold">次のセッションを自動的に開始</span>
+                        <span class="relative">
+                            <input type="checkbox" id="auto-cycle-toggle" class="sr-only peer">
+                            <span class="block w-14 h-8 bg-gray-600 rounded-full peer-checked:bg-blue-600 transition"></span>
+                            <span class="absolute left-1 top-1 block w-6 h-6 bg-white rounded-full transition-transform peer-checked:translate-x-full"></span>
+                        </span>
+                    </label>
+                </div>
             </div>
             <div class="mt-8 flex justify-end">
                 <button id="save-settings-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded">保存</button>
@@ -142,14 +210,31 @@
         document.addEventListener('DOMContentLoaded', () => {
             // --- DOM Elements ---
             const appBody = document.getElementById('app-body');
+            const goalScreen = document.getElementById('goal-screen');
+            const mainTimerScreen = document.getElementById('main-timer-screen');
+            const goalCompletedScreen = document.getElementById('goal-completed-screen');
+            const goalInput = document.getElementById('goal-input');
+            const totalTimeValue = document.getElementById('total-time-value');
+            const finishTimeValue = document.getElementById('finish-time-value');
+            const startGoalBtn = document.getElementById('start-goal-btn');
+            const addSessionsBtn = document.getElementById('add-sessions-btn');
+            const endSessionBtn = document.getElementById('end-session-btn');
+            const completedSessionsDisplay = document.getElementById('completed-sessions');
+            const completedTimeDisplay = document.getElementById('completed-time');
             const timerDisplay = document.getElementById('timer-display');
             const startPauseBtn = document.getElementById('start-pause-btn');
             const resetBtn = document.getElementById('reset-btn');
+            const skipBtn = document.getElementById('skip-btn');
             const settingsBtn = document.getElementById('settings-btn');
             const modeButtons = document.querySelectorAll('.mode-button');
             const pomodoroCounterDisplay = document.getElementById('pomodoro-counter');
             const progressPath = document.getElementById('progress-path');
             const timerCard = document.getElementById('timer-card');
+            const sessionNotification = document.getElementById('session-notification');
+            const sessionName = document.getElementById('session-name');
+            const notificationRemainingSessions = document.getElementById('notification-remaining-sessions');
+            const progressInfo = document.getElementById('progress-info');
+            const remainingSessionsDisplay = document.getElementById('remaining-sessions');
             const uiToHide = [
                 document.getElementById('app-header'),
                 document.getElementById('settings-button-container'),
@@ -166,6 +251,7 @@
             const longBreakInput = document.getElementById('long-break-duration-input');
             const durationInputs = [pomodoroInput, shortBreakInput, longBreakInput];
             const adjustButtons = document.querySelectorAll('.adjust-btn');
+            const autoCycleToggle = document.getElementById('auto-cycle-toggle');
 
             // --- Timer Settings ---
             let DURATION = {
@@ -181,8 +267,13 @@
             let logicTimerInterval = null;
             let animationFrameId = null;
             let endTime = 0; // Timestamp for when the timer ends
-            let pomodoroCount = 0;
+            let pomodoroCount = 0; // For the current goal
             let sessionCount = 1;
+            let notificationTimeout = null;
+            let isAutoCycle = true; // Default to automatic cycle
+            let targetPomodoros = 4;
+            let cumulativePomodoroCount = 0; // Total across all goals
+            let cumulativeElapsedTime = 0; // Total across all goals
 
             // --- Colors ---
             const COLORS = {
@@ -195,11 +286,15 @@
                 shortBreak: 'text-teal-400',
                 longBreak: 'text-blue-400',
             };
-            // プログレスバーの色をより暗く、背景に近い色に変更
             const FILL_COLORS = {
                 pomodoro: 'fill-red-950',
                 shortBreak: 'fill-teal-950',
                 longBreak: 'fill-blue-950',
+            };
+            const SESSION_NAMES = {
+                pomodoro: 'ポモドーロ',
+                shortBreak: '短い休憩',
+                longBreak: '長い休憩'
             };
 
             // --- Helper Functions ---
@@ -208,6 +303,38 @@
                 return str.replace(/[０-９]/g, (s) => {
                     return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
                 }).replace(/[^0-9]/g, '');
+            }
+            
+            function formatTime(totalSeconds) {
+                if (totalSeconds < 60) return `${Math.ceil(totalSeconds)}秒`;
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                let result = '';
+                if (hours > 0) result += `${hours}時間 `;
+                if (minutes > 0) result += `${minutes}分`;
+                return result.trim() || '0分';
+            }
+
+            function getFinishTime(remainingSeconds) {
+                const now = new Date();
+                now.setSeconds(now.getSeconds() + remainingSeconds);
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                return `${hours}:${minutes}`;
+            }
+
+            function calculateTotalTime(pomos, startCount = 0) {
+                if (pomos <= 0) return 0;
+                let totalTime = pomos * DURATION.pomodoro;
+                for (let i = 0; i < pomos - 1; i++) {
+                    const currentPomoIndex = startCount + i + 1;
+                    if (currentPomoIndex > 0 && currentPomoIndex % 4 === 0) {
+                        totalTime += DURATION.longBreak;
+                    } else {
+                        totalTime += DURATION.shortBreak;
+                    }
+                }
+                return totalTime;
             }
 
             // --- SVG Helper Functions ---
@@ -238,7 +365,6 @@
                 const newText = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
                 if (timerDisplay.textContent !== newText) {
                     timerDisplay.textContent = newText;
-                    // アプリとして開いているときはタイトルを更新しない
                     if (window.matchMedia('(display-mode: browser)').matches) {
                         document.title = newText;
                     }
@@ -252,6 +378,17 @@
                 const pathData = describeArc(50, 50, 45, angle);
                 progressPath.setAttribute("d", pathData);
             }
+            
+            function updateProgressInfo() {
+                const remainingPomos = targetPomodoros - pomodoroCount;
+                if (remainingPomos <= 0) {
+                    progressInfo.classList.add('hidden');
+                    return;
+                }
+                
+                remainingSessionsDisplay.textContent = `残り ${remainingPomos} / ${targetPomodoros} ポモドーロ`;
+                progressInfo.classList.remove('hidden');
+            }
 
             // --- Animation Loop ---
             function animationLoop() {
@@ -260,18 +397,43 @@
                 updateVisualDisplay(remainingMs); 
                 animationFrameId = requestAnimationFrame(animationLoop);
             }
+            
+            // --- Notification Logic ---
+            function showSessionNotification(modeName, text) {
+                clearTimeout(notificationTimeout);
+                sessionName.textContent = text || SESSION_NAMES[modeName];
+                
+                const remainingPomos = targetPomodoros - pomodoroCount;
+                if (remainingPomos <= 0 || text) {
+                    notificationRemainingSessions.textContent = '';
+                } else {
+                    notificationRemainingSessions.textContent = `残り ${remainingPomos} / ${targetPomodoros} ポモドーロ`;
+                }
+                
+                sessionNotification.classList.remove('opacity-0');
+                notificationTimeout = setTimeout(() => {
+                    sessionNotification.classList.add('opacity-0');
+                }, 15000);
+            }
+
+            function hideSessionNotification() {
+                clearTimeout(notificationTimeout);
+                sessionNotification.classList.add('opacity-0');
+            }
 
             // --- Focus Mode Control ---
             const enterFocusMode = () => {
                 uiToHide.forEach(el => el.classList.add('opacity-0', 'pointer-events-none'));
                 timerCard.classList.add('focus-mode');
                 appBody.addEventListener('click', handleBodyClick);
+                progressInfo.classList.add('hidden');
             };
 
             const exitFocusMode = () => {
                 uiToHide.forEach(el => el.classList.remove('opacity-0', 'pointer-events-none'));
                 timerCard.classList.remove('focus-mode');
                 appBody.removeEventListener('click', handleBodyClick);
+                updateProgressInfo();
             };
             
             const handleBodyClick = (event) => {
@@ -307,36 +469,64 @@
                 }, 250);
             }
 
-            function pauseTimer() {
+            function pauseTimer(keepFocus = false) {
                 if (!isActive) return;
                 isActive = false;
                 startPauseBtn.textContent = '開始';
-                exitFocusMode();
+                if (!keepFocus) {
+                    exitFocusMode();
+                }
                 
                 clearInterval(logicTimerInterval);
                 cancelAnimationFrame(animationFrameId);
                 
                 timeRemaining = Math.max(0, (endTime - performance.now()) / 1000);
+                
+                if (!keepFocus) {
+                    hideSessionNotification();
+                }
             }
             
-            function resetTimer() {
-                pauseTimer();
+            function resetTimer(keepFocus = false) {
+                pauseTimer(keepFocus);
                 timeRemaining = DURATION[mode];
                 updateDigitalDisplay(timeRemaining);
                 updateVisualDisplay(timeRemaining * 1000);
+                if (!keepFocus) updateProgressInfo();
             }
 
-            function switchMode(newMode) {
+            function switchMode(newMode, keepFocus = false) {
                 mode = newMode;
-                resetTimer();
+                resetTimer(keepFocus);
                 updateUIForMode(newMode);
             }
             
             function handleTimerEnd() {
-                pomodoroCount = mode === 'pomodoro' ? pomodoroCount + 1 : pomodoroCount;
+                if (mode === 'pomodoro') {
+                    pomodoroCount++;
+                }
+
+                if (pomodoroCount >= targetPomodoros) {
+                    cumulativePomodoroCount += pomodoroCount;
+                    cumulativeElapsedTime += (new Date() - sessionStartTime) / 1000;
+                    completedSessionsDisplay.textContent = `${cumulativePomodoroCount} セッション`;
+                    completedTimeDisplay.textContent = formatTime(cumulativeElapsedTime);
+                    mainTimerScreen.classList.add('hidden');
+                    goalCompletedScreen.classList.remove('hidden');
+                    return;
+                }
+
                 const nextMode = mode === 'pomodoro' ? (pomodoroCount % 4 === 0 ? 'longBreak' : 'shortBreak') : 'pomodoro';
                 if (nextMode === 'pomodoro') sessionCount++;
-                switchMode(nextMode);
+                
+                switchMode(nextMode, isAutoCycle);
+                showSessionNotification(nextMode);
+                
+                if (isAutoCycle) {
+                    setTimeout(() => {
+                        startTimer();
+                    }, 1000);
+                }
             }
 
             function updateUIForMode(currentMode) {
@@ -365,6 +555,7 @@
                 pomodoroInput.value = DURATION.pomodoro / 60;
                 shortBreakInput.value = DURATION.shortBreak / 60;
                 longBreakInput.value = DURATION.longBreak / 60;
+                autoCycleToggle.checked = isAutoCycle;
                 settingsModal.classList.remove('hidden');
             }
 
@@ -385,6 +576,8 @@
                 if (newShortBreak > 0) DURATION.shortBreak = newShortBreak * 60;
                 if (newLongBreak > 0) DURATION.longBreak = newLongBreak * 60;
 
+                isAutoCycle = autoCycleToggle.checked;
+
                 closeSettingsModal();
                 if (!isActive) {
                     resetTimer();
@@ -393,7 +586,25 @@
 
             // --- Event Listeners ---
             startPauseBtn.addEventListener('click', e => { e.stopPropagation(); isActive ? pauseTimer() : startTimer(); });
-            resetBtn.addEventListener('click', e => { e.stopPropagation(); resetTimer(); });
+            resetBtn.addEventListener('click', e => { 
+                e.stopPropagation(); 
+                // Reset goes back to goal screen
+                pauseTimer();
+                pomodoroCount = 0;
+                sessionCount = 1;
+                cumulativePomodoroCount = 0;
+                cumulativeElapsedTime = 0;
+                switchMode('pomodoro');
+                mainTimerScreen.classList.add('hidden');
+                goalScreen.classList.remove('hidden');
+            });
+            skipBtn.addEventListener('click', e => {
+                e.stopPropagation();
+                if (isActive) {
+                    pauseTimer(true); // Keep focus mode
+                }
+                handleTimerEnd();
+            });
             settingsBtn.addEventListener('click', e => { e.stopPropagation(); openSettingsModal(); });
             saveSettingsBtn.addEventListener('click', saveSettings);
             settingsModal.addEventListener('click', (e) => {
@@ -402,7 +613,9 @@
             modeButtons.forEach(button => {
                 button.addEventListener('click', e => {
                     e.stopPropagation();
-                    if (!isActive) switchMode(e.target.dataset.mode);
+                    if (!isActive) {
+                        switchMode(e.target.dataset.mode);
+                    }
                 });
             });
 
@@ -424,11 +637,41 @@
                     targetInput.value = currentValue;
                 });
             });
+            
+            goalInput.addEventListener('input', () => {
+                goalInput.value = toHalfWidth(goalInput.value);
+                const pomos = parseInt(goalInput.value, 10) || 0;
+                const totalTime = calculateTotalTime(pomos, cumulativePomodoroCount);
+                totalTimeValue.textContent = formatTime(totalTime);
+                finishTimeValue.textContent = getFinishTime(totalTime);
+            });
+            
+            startGoalBtn.addEventListener('click', () => {
+                const pomos = parseInt(goalInput.value, 10);
+                if (pomos > 0) {
+                    targetPomodoros = pomos;
+                    pomodoroCount = 0;
+                    sessionCount = 1;
+                    sessionStartTime = new Date();
+                    switchMode('pomodoro');
+                    goalScreen.classList.add('hidden');
+                    mainTimerScreen.classList.remove('hidden');
+                    updateProgressInfo();
+                }
+            });
+            
+            addSessionsBtn.addEventListener('click', () => {
+                goalCompletedScreen.classList.add('hidden');
+                goalScreen.classList.remove('hidden');
+                goalInput.dispatchEvent(new Event('input')); // Recalculate time based on cumulative count
+            });
+            
+            endSessionBtn.addEventListener('click', () => {
+                window.close();
+            });
 
             // --- Initial Setup ---
-            updateUIForMode('pomodoro');
-            updateDigitalDisplay(timeRemaining);
-            updateVisualDisplay(timeRemaining * 1000);
+            goalInput.dispatchEvent(new Event('input')); // Calculate initial total time
         });
     </script>
 </body>
