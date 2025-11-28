@@ -304,6 +304,11 @@
                 shortBreak: 'fill-teal-950',
                 longBreak: 'fill-blue-950',
             };
+            const PIE_COLORS = {
+                pomodoro: '#ef4444',
+                shortBreak: '#14b8a6',
+                longBreak: '#3b82f6',
+            };
             const SESSION_NAMES = {
                 pomodoro: 'ポモドーロ',
                 shortBreak: '短い休憩',
@@ -312,7 +317,6 @@
 
             const SUPPORTS_NOTIFICATIONS = 'Notification' in window;
             const SUPPORTS_MEDIA_SESSION = 'mediaSession' in navigator && 'MediaMetadata' in window;
-            const MINI_PLAYER_ARTWORK = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🍅</text></svg>';
 
             // --- Helper Functions ---
             function toHalfWidth(str) {
@@ -379,6 +383,28 @@
                 const largeArcFlag = angle <= 180 ? "0" : "1";
                 const d = ["M", start.x, start.y, "A", radius, radius, 0, largeArcFlag, 1, end.x, end.y, "L", x, y, "Z"].join(" ");
                 return d;
+            }
+
+            function createPieChartArtwork(remainingSeconds = timeRemaining) {
+                const totalSeconds = DURATION[mode] || 1;
+                const clampedRemaining = Math.max(0, Math.min(totalSeconds, remainingSeconds));
+                const elapsedAngle = ((totalSeconds - clampedRemaining) / totalSeconds) * 360;
+                const arcPath = describeArc(100, 100, 72, elapsedAngle);
+                const primaryColor = PIE_COLORS[mode];
+                const timeText = formatClock(clampedRemaining);
+                const sessionText = SESSION_NAMES[mode];
+
+                const svg = `
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="${sessionText} 残り ${timeText}">
+                        <rect width="200" height="200" rx="24" fill="#0b1220" />
+                        <circle cx="100" cy="100" r="80" fill="#111827" stroke="#1f2937" stroke-width="12" />
+                        ${arcPath ? `<path d="${arcPath}" fill="${primaryColor}" opacity="0.9" />` : ''}
+                        <text x="100" y="104" text-anchor="middle" font-size="36" fill="#f9fafb" font-family="Inter, system-ui, -apple-system, sans-serif">${timeText}</text>
+                        <text x="100" y="134" text-anchor="middle" font-size="16" fill="${primaryColor}" font-family="Inter, system-ui, -apple-system, sans-serif">${sessionText}</text>
+                    </svg>
+                `;
+
+                return `data:image/svg+xml,${encodeURIComponent(svg)}`;
             }
             
             // --- Display Update Functions ---
@@ -631,12 +657,14 @@
                 const clampedRemaining = Math.max(0, remainingSeconds);
                 const elapsed = Math.min(DURATION[mode], Math.max(0, DURATION[mode] - clampedRemaining));
 
+                const artwork = createPieChartArtwork(clampedRemaining);
+
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: `${SESSION_NAMES[mode]}タイマー`,
                     artist: isActive ? '進行中' : '一時停止中',
                     album: 'ポモドーロタイマー',
                     artwork: [
-                        { src: MINI_PLAYER_ARTWORK, sizes: '96x96', type: 'image/svg+xml' },
+                        { src: artwork, sizes: '512x512', type: 'image/svg+xml' },
                     ],
                 });
 
