@@ -167,6 +167,9 @@
         </div>
     </div>
 
+    <canvas id="pip-canvas" width="320" height="180" class="hidden"></canvas>
+    <video id="pip-video" class="hidden" muted playsinline></video>
+
     <!-- Settings Modal -->
     <div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
         <div class="bg-gray-800 text-white p-8 rounded-lg shadow-2xl w-full max-w-sm">
@@ -253,6 +256,9 @@
                 document.getElementById('counter-container'),
                 timerDisplay
             ];
+            const pipCanvas = document.getElementById('pip-canvas');
+            const pipVideo = document.getElementById('pip-video');
+            const pipCtx = pipCanvas.getContext('2d');
             // Modal elements
             const settingsModal = document.getElementById('settings-modal');
             const saveSettingsBtn = document.getElementById('save-settings-btn');
@@ -287,6 +293,7 @@
             let backgroundNotificationInterval = null;
             let backgroundNotification = null;
             let mediaSessionInitialized = false;
+            let pipRequestInFlight = false;
 
             // --- Colors ---
             const COLORS = {
@@ -317,6 +324,7 @@
 
             const SUPPORTS_NOTIFICATIONS = 'Notification' in window;
             const SUPPORTS_MEDIA_SESSION = 'mediaSession' in navigator && 'MediaMetadata' in window;
+            const SUPPORTS_PIP = 'pictureInPictureEnabled' in document;
 
             // --- Helper Functions ---
             function toHalfWidth(str) {
@@ -418,6 +426,7 @@
                         document.title = newText;
                     }
                 }
+                updatePictureInPicture(secs);
             }
             
             function updateVisualDisplay(ms) {
@@ -498,6 +507,9 @@
                 isActive = true;
                 startPauseBtn.textContent = '一時停止';
                 enterFocusMode();
+
+                ensurePiPVideo();
+                updatePictureInPicture(timeRemaining);
 
                 endTime = performance.now() + timeRemaining * 1000;
 
@@ -595,6 +607,63 @@
                 }
             }
 
+            // --- Picture in Picture ---
+            function drawPiPContent(secs) {
+                if (!SUPPORTS_PIP) return;
+                const primaryColor = TEXT_COLORS[mode].replace('text-', '');
+                pipCtx.fillStyle = '#0f172a';
+                pipCtx.fillRect(0, 0, pipCanvas.width, pipCanvas.height);
+
+                const gradient = pipCtx.createLinearGradient(0, 0, pipCanvas.width, pipCanvas.height);
+                gradient.addColorStop(0, '#111827');
+                gradient.addColorStop(1, '#0b1220');
+                pipCtx.fillStyle = gradient;
+                pipCtx.fillRect(12, 12, pipCanvas.width - 24, pipCanvas.height - 24);
+
+                pipCtx.fillStyle = '#e5e7eb';
+                pipCtx.font = 'bold 48px Inter, system-ui';
+                pipCtx.textAlign = 'center';
+                pipCtx.textBaseline = 'middle';
+                const minutes = Math.floor(secs / 60);
+                const seconds = Math.floor(secs % 60);
+                pipCtx.fillText(`${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`, pipCanvas.width / 2, pipCanvas.height / 2);
+
+                pipCtx.fillStyle = '#9ca3af';
+                pipCtx.font = '20px Inter, system-ui';
+                pipCtx.fillText(`${SESSION_NAMES[mode]} ${isActive ? '進行中' : '停止中'}`, pipCanvas.width / 2, pipCanvas.height / 2 + 42);
+
+                pipCtx.fillStyle = primaryColor.includes('red') ? '#ef4444' : primaryColor.includes('teal') ? '#14b8a6' : '#3b82f6';
+                pipCtx.fillRect(0, pipCanvas.height - 8, pipCanvas.width, 8);
+            }
+
+            async function ensurePiPVideo() {
+                if (!SUPPORTS_PIP) return;
+                if (!pipVideo.srcObject) {
+                    try {
+                        pipVideo.srcObject = pipCanvas.captureStream(30);
+                        await pipVideo.play();
+                    } catch (err) {
+                        console.warn('PiP動画の初期化に失敗しました', err);
+                        return;
+                    }
+                }
+
+                if (document.pictureInPictureElement === pipVideo || pipRequestInFlight) return;
+                pipRequestInFlight = true;
+                try {
+                    await pipVideo.requestPictureInPicture();
+                } catch (err) {
+                    console.warn('Picture-in-Pictureの開始に失敗しました', err);
+                } finally {
+                    pipRequestInFlight = false;
+                }
+            }
+
+            function updatePictureInPicture(secs) {
+                if (!SUPPORTS_PIP) return;
+                drawPiPContent(secs);
+            }
+
             function updateUIForMode(currentMode) {
                 appBody.className = `flex items-center justify-center min-h-screen ${COLORS[currentMode]}`;
                 startPauseBtn.className = `w-48 bg-white ${TEXT_COLORS[currentMode]} text-2xl font-bold py-4 px-8 rounded-lg shadow-md hover:bg-gray-200 transition-all duration-300 transform hover:scale-105 focus-ring-custom`;
@@ -606,6 +675,7 @@
                     if (button.dataset.mode === currentMode) button.classList.add(TEXT_COLORS[currentMode]);
                 });
                 pomodoroCounterDisplay.textContent = `ポモドーロ #${sessionCount}`;
+                updatePictureInPicture(timeRemaining);
             }
 
             function playFinishSound() {
