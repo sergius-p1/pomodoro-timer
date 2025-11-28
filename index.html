@@ -99,6 +99,13 @@
                         <p id="remaining-sessions"></p>
                     </div>
 
+                    <div id="background-status" class="text-center text-white/60 mb-4 space-y-2 hidden">
+                        <p id="background-status-text">バックグラウンド通知を有効にすると、ロック画面でも残り時間を確認できます。</p>
+                        <button id="enable-notifications-btn" class="bg-white/20 hover:bg-white/30 text-white text-sm font-semibold px-4 py-2 rounded-full focus-ring-custom">
+                            通知を有効にする
+                        </button>
+                    </div>
+
                     <!-- Timer Display with Visual Progress -->
                     <div class="relative flex items-center justify-center w-64 h-64 md:w-72 md:h-72 mx-auto my-8">
                         <svg class="absolute top-0 left-0 w-full h-full" viewBox="0 0 100 100">
@@ -235,6 +242,9 @@
             const notificationRemainingSessions = document.getElementById('notification-remaining-sessions');
             const progressInfo = document.getElementById('progress-info');
             const remainingSessionsDisplay = document.getElementById('remaining-sessions');
+            const backgroundStatus = document.getElementById('background-status');
+            const backgroundStatusText = document.getElementById('background-status-text');
+            const enableNotificationsBtn = document.getElementById('enable-notifications-btn');
             const uiToHide = [
                 document.getElementById('app-header'),
                 document.getElementById('settings-button-container'),
@@ -274,6 +284,8 @@
             let targetPomodoros = 4;
             let cumulativePomodoroCount = 0; // Total across all goals
             let cumulativeElapsedTime = 0; // Total across all goals
+            let backgroundNotificationInterval = null;
+            let backgroundNotification = null;
 
             // --- Colors ---
             const COLORS = {
@@ -296,6 +308,8 @@
                 shortBreak: '短い休憩',
                 longBreak: '長い休憩'
             };
+
+            const SUPPORTS_NOTIFICATIONS = 'Notification' in window;
 
             // --- Helper Functions ---
             function toHalfWidth(str) {
@@ -321,6 +335,12 @@
                 const hours = String(now.getHours()).padStart(2, '0');
                 const minutes = String(now.getMinutes()).padStart(2, '0');
                 return `${hours}:${minutes}`;
+            }
+
+            function formatClock(totalSeconds) {
+                const minutes = Math.max(0, Math.floor(totalSeconds / 60));
+                const seconds = Math.max(0, Math.floor(totalSeconds % 60));
+                return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             }
 
             function calculateTotalTime(pomos, startCount = 0) {
@@ -427,6 +447,7 @@
                 timerCard.classList.add('focus-mode');
                 appBody.addEventListener('click', handleBodyClick);
                 progressInfo.classList.add('hidden');
+                updateBackgroundStatus(true);
             };
 
             const exitFocusMode = () => {
@@ -434,6 +455,7 @@
                 timerCard.classList.remove('focus-mode');
                 appBody.removeEventListener('click', handleBodyClick);
                 updateProgressInfo();
+                updateBackgroundStatus(false);
             };
             
             const handleBodyClick = (event) => {
@@ -449,14 +471,17 @@
                 enterFocusMode();
                 
                 endTime = performance.now() + timeRemaining * 1000;
-                
+
                 cancelAnimationFrame(animationFrameId);
                 animationFrameId = requestAnimationFrame(animationLoop);
+
+                startBackgroundNotifications();
 
                 Tone.start().catch(e => console.error("Tone.jsの開始に失敗しました:", e));
                 logicTimerInterval = setInterval(() => {
                     const remainingSeconds = Math.max(0, (endTime - performance.now()) / 1000);
                     updateDigitalDisplay(remainingSeconds);
+                    updateBackgroundNotification(remainingSeconds);
 
                     if (remainingSeconds <= 0) {
                         timeRemaining = 0;
@@ -464,6 +489,7 @@
                         clearInterval(logicTimerInterval);
                         cancelAnimationFrame(animationFrameId);
                         playFinishSound();
+                        stopBackgroundNotifications();
                         handleTimerEnd();
                     }
                 }, 250);
@@ -476,10 +502,11 @@
                 if (!keepFocus) {
                     exitFocusMode();
                 }
-                
+
                 clearInterval(logicTimerInterval);
                 cancelAnimationFrame(animationFrameId);
-                
+                stopBackgroundNotifications();
+
                 timeRemaining = Math.max(0, (endTime - performance.now()) / 1000);
                 
                 if (!keepFocus) {
@@ -499,6 +526,7 @@
                 mode = newMode;
                 resetTimer(keepFocus);
                 updateUIForMode(newMode);
+                startBackgroundNotifications();
             }
             
             function handleTimerEnd() {
@@ -511,6 +539,7 @@
                     cumulativeElapsedTime += (new Date() - sessionStartTime) / 1000;
                     completedSessionsDisplay.textContent = `${cumulativePomodoroCount} セッション`;
                     completedTimeDisplay.textContent = formatTime(cumulativeElapsedTime);
+                    stopBackgroundNotifications();
                     mainTimerScreen.classList.add('hidden');
                     goalCompletedScreen.classList.remove('hidden');
                     return;
@@ -584,6 +613,81 @@
                 }
             }
 
+            // --- Background Notification Control ---
+            function updateBackgroundStatus(forceShow = false) {
+                if (!SUPPORTS_NOTIFICATIONS) return;
+                const shouldShow = forceShow || Notification.permission !== 'denied';
+                backgroundStatus.classList.toggle('hidden', !shouldShow);
+
+                if (Notification.permission === 'granted') {
+                    backgroundStatusText.textContent = 'バックグラウンド通知で残り時間を表示中 (ロック画面にも表示されます)';
+                    enableNotificationsBtn.classList.add('hidden');
+                } else if (Notification.permission === 'default') {
+                    backgroundStatusText.textContent = 'バックグラウンド通知を有効にすると、ロック画面でも残り時間を確認できます。';
+                    enableNotificationsBtn.classList.remove('hidden');
+                } else {
+                    backgroundStatusText.textContent = '通知がブロックされています。ブラウザ設定から許可してください。';
+                    enableNotificationsBtn.classList.add('hidden');
+                }
+            }
+
+            function requestNotificationPermission() {
+                if (!SUPPORTS_NOTIFICATIONS) return;
+                Notification.requestPermission().then(updateBackgroundStatus);
+            }
+
+            function createProgressNotification(remainingSeconds) {
+                if (!SUPPORTS_NOTIFICATIONS || Notification.permission !== 'granted') return null;
+                const body = `${SESSION_NAMES[mode]} 残り ${formatClock(remainingSeconds)} (終了 ${getFinishTime(remainingSeconds)})`;
+                try {
+                    return new Notification('ポモドーロ進行中', {
+                        body,
+                        tag: 'pomodoro-progress',
+                        renotify: true,
+                        silent: true,
+                    });
+                } catch (error) {
+                    console.warn('通知の送信に失敗しました', error);
+                    return null;
+                }
+            }
+
+            function updateBackgroundNotification(remainingSeconds) {
+                if (!SUPPORTS_NOTIFICATIONS || Notification.permission !== 'granted') return;
+                if (document.visibilityState !== 'hidden') {
+                    stopBackgroundNotifications();
+                    return;
+                }
+                if (remainingSeconds <= 0) {
+                    stopBackgroundNotifications();
+                    return;
+                }
+                if (!backgroundNotification || backgroundNotification.body?.includes('00:00')) {
+                    backgroundNotification = createProgressNotification(remainingSeconds);
+                }
+            }
+
+            function startBackgroundNotifications() {
+                if (!SUPPORTS_NOTIFICATIONS || Notification.permission !== 'granted' || !isActive || document.visibilityState !== 'hidden') return;
+                stopBackgroundNotifications();
+                backgroundNotification = createProgressNotification(Math.max(0, (endTime - performance.now()) / 1000));
+                backgroundNotificationInterval = setInterval(() => {
+                    const remainingSeconds = Math.max(0, (endTime - performance.now()) / 1000);
+                    backgroundNotification = createProgressNotification(remainingSeconds);
+                }, 15000);
+            }
+
+            function stopBackgroundNotifications() {
+                if (backgroundNotificationInterval) {
+                    clearInterval(backgroundNotificationInterval);
+                    backgroundNotificationInterval = null;
+                }
+                if (backgroundNotification) {
+                    backgroundNotification.close();
+                    backgroundNotification = null;
+                }
+            }
+
             // --- Event Listeners ---
             startPauseBtn.addEventListener('click', e => { e.stopPropagation(); isActive ? pauseTimer() : startTimer(); });
             resetBtn.addEventListener('click', e => { 
@@ -645,6 +749,20 @@
                 totalTimeValue.textContent = formatTime(totalTime);
                 finishTimeValue.textContent = getFinishTime(totalTime);
             });
+
+            if (SUPPORTS_NOTIFICATIONS) {
+                enableNotificationsBtn.addEventListener('click', () => {
+                    requestNotificationPermission();
+                });
+
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'hidden' && isActive) {
+                        startBackgroundNotifications();
+                    } else {
+                        stopBackgroundNotifications();
+                    }
+                });
+            }
             
             startGoalBtn.addEventListener('click', () => {
                 const pomos = parseInt(goalInput.value, 10);
@@ -672,6 +790,7 @@
 
             // --- Initial Setup ---
             goalInput.dispatchEvent(new Event('input')); // Calculate initial total time
+            updateBackgroundStatus();
         });
     </script>
 </body>
