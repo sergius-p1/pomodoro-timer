@@ -167,7 +167,7 @@
         </div>
     </div>
 
-    <canvas id="pip-canvas" width="320" height="180" class="hidden"></canvas>
+    <canvas id="pip-canvas" width="240" height="240" class="hidden"></canvas>
     <video id="pip-video" class="hidden" muted playsinline></video>
 
     <!-- Settings Modal -->
@@ -258,7 +258,9 @@
             ];
             const pipCanvas = document.getElementById('pip-canvas');
             const pipVideo = document.getElementById('pip-video');
+            pipVideo.playsInline = true;
             const pipCtx = pipCanvas.getContext('2d');
+            const PIP_SIZE = 240;
             // Modal elements
             const settingsModal = document.getElementById('settings-modal');
             const saveSettingsBtn = document.getElementById('save-settings-btn');
@@ -608,36 +610,81 @@
             }
 
             // --- Picture in Picture ---
+            function resizePiPCanvas() {
+                const scale = window.devicePixelRatio || 1;
+                pipCanvas.width = PIP_SIZE * scale;
+                pipCanvas.height = PIP_SIZE * scale;
+                pipCanvas.style.width = `${PIP_SIZE}px`;
+                pipCanvas.style.height = `${PIP_SIZE}px`;
+                pipCtx.setTransform(scale, 0, 0, scale, 0, 0);
+            }
+
             function drawPiPContent(secs) {
                 if (!SUPPORTS_PIP) return;
-                const primaryColor = TEXT_COLORS[mode].replace('text-', '');
-                pipCtx.fillStyle = '#0f172a';
-                pipCtx.fillRect(0, 0, pipCanvas.width, pipCanvas.height);
 
-                const gradient = pipCtx.createLinearGradient(0, 0, pipCanvas.width, pipCanvas.height);
-                gradient.addColorStop(0, '#111827');
-                gradient.addColorStop(1, '#0b1220');
+                pipCtx.setTransform(1, 0, 0, 1, 0, 0);
+                pipCtx.clearRect(0, 0, pipCanvas.width, pipCanvas.height);
+                resizePiPCanvas();
+
+                const totalSeconds = Math.max(1, DURATION[mode]);
+                const clampedRemaining = Math.max(0, Math.min(totalSeconds, secs));
+                const progress = (totalSeconds - clampedRemaining) / totalSeconds;
+                const center = PIP_SIZE / 2;
+                const radius = center - 16;
+                const startAngle = -Math.PI / 2;
+                const endAngle = startAngle + (Math.PI * 2 * progress);
+                const primaryColor = PIE_COLORS[mode];
+
+                pipCtx.clearRect(0, 0, PIP_SIZE, PIP_SIZE);
+
+                // Background
+                const gradient = pipCtx.createLinearGradient(0, 0, PIP_SIZE, PIP_SIZE);
+                gradient.addColorStop(0, '#0b1220');
+                gradient.addColorStop(1, '#0f172a');
                 pipCtx.fillStyle = gradient;
-                pipCtx.fillRect(12, 12, pipCanvas.width - 24, pipCanvas.height - 24);
+                pipCtx.fillRect(0, 0, PIP_SIZE, PIP_SIZE);
 
-                pipCtx.fillStyle = '#e5e7eb';
-                pipCtx.font = 'bold 48px Inter, system-ui';
+                // Base circle
+                pipCtx.beginPath();
+                pipCtx.fillStyle = '#111827';
+                pipCtx.strokeStyle = '#1f2937';
+                pipCtx.lineWidth = 10;
+                pipCtx.arc(center, center, radius, 0, Math.PI * 2);
+                pipCtx.fill();
+                pipCtx.stroke();
+
+                // Progress slice
+                if (progress > 0) {
+                    pipCtx.beginPath();
+                    pipCtx.moveTo(center, center);
+                    pipCtx.arc(center, center, radius - 2, startAngle, endAngle, false);
+                    pipCtx.closePath();
+                    pipCtx.fillStyle = primaryColor;
+                    pipCtx.globalAlpha = 0.92;
+                    pipCtx.fill();
+                    pipCtx.globalAlpha = 1;
+                }
+
+                // Time label
+                const minutes = Math.floor(clampedRemaining / 60);
+                const seconds = Math.floor(clampedRemaining % 60);
+                pipCtx.fillStyle = '#f9fafb';
+                pipCtx.font = 'bold 36px Inter, system-ui, -apple-system, sans-serif';
                 pipCtx.textAlign = 'center';
                 pipCtx.textBaseline = 'middle';
-                const minutes = Math.floor(secs / 60);
-                const seconds = Math.floor(secs % 60);
-                pipCtx.fillText(`${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`, pipCanvas.width / 2, pipCanvas.height / 2);
+                pipCtx.fillText(`${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`, center, center - 6);
 
-                pipCtx.fillStyle = '#9ca3af';
-                pipCtx.font = '20px Inter, system-ui';
-                pipCtx.fillText(`${SESSION_NAMES[mode]} ${isActive ? '進行中' : '停止中'}`, pipCanvas.width / 2, pipCanvas.height / 2 + 42);
-
-                pipCtx.fillStyle = primaryColor.includes('red') ? '#ef4444' : primaryColor.includes('teal') ? '#14b8a6' : '#3b82f6';
-                pipCtx.fillRect(0, pipCanvas.height - 8, pipCanvas.width, 8);
+                pipCtx.fillStyle = primaryColor;
+                pipCtx.font = '18px Inter, system-ui, -apple-system, sans-serif';
+                pipCtx.fillText(SESSION_NAMES[mode], center, center + 28);
             }
 
             async function ensurePiPVideo() {
                 if (!SUPPORTS_PIP) return;
+                pipVideo.disablePictureInPicture = false;
+                pipVideo.controls = false;
+                pipVideo.muted = true;
+                pipVideo.playsInline = true;
                 if (!pipVideo.srcObject) {
                     try {
                         pipVideo.srcObject = pipCanvas.captureStream(30);
@@ -936,6 +983,18 @@
             
             endSessionBtn.addEventListener('click', () => {
                 window.close();
+            });
+
+            window.addEventListener('resize', () => {
+                if (SUPPORTS_PIP) {
+                    updatePictureInPicture(timeRemaining);
+                }
+            });
+
+            window.addEventListener('orientationchange', () => {
+                if (SUPPORTS_PIP) {
+                    updatePictureInPicture(timeRemaining);
+                }
             });
 
             // --- Initial Setup ---
