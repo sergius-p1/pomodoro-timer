@@ -100,7 +100,7 @@
                     </div>
 
                     <div id="background-status" class="text-center text-white/60 mb-4 space-y-2 hidden">
-                        <p id="background-status-text">バックグラウンド通知を有効にすると、ロック画面でも残り時間を確認できます。</p>
+                        <p id="background-status-text">バックグラウンドではミニプレーヤーとして表示され、ロック画面でもタイマーが確認できます。通知を許可してください。</p>
                         <button id="enable-notifications-btn" class="bg-white/20 hover:bg-white/30 text-white text-sm font-semibold px-4 py-2 rounded-full focus-ring-custom">
                             通知を有効にする
                         </button>
@@ -286,6 +286,7 @@
             let cumulativeElapsedTime = 0; // Total across all goals
             let backgroundNotificationInterval = null;
             let backgroundNotification = null;
+            let mediaSessionInitialized = false;
 
             // --- Colors ---
             const COLORS = {
@@ -310,6 +311,8 @@
             };
 
             const SUPPORTS_NOTIFICATIONS = 'Notification' in window;
+            const SUPPORTS_MEDIA_SESSION = 'mediaSession' in navigator && 'MediaMetadata' in window;
+            const MINI_PLAYER_ARTWORK = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🍅</text></svg>';
 
             // --- Helper Functions ---
             function toHalfWidth(str) {
@@ -447,7 +450,7 @@
                 timerCard.classList.add('focus-mode');
                 appBody.addEventListener('click', handleBodyClick);
                 progressInfo.classList.add('hidden');
-                updateBackgroundStatus(true);
+                updateBackgroundStatus();
             };
 
             const exitFocusMode = () => {
@@ -455,7 +458,7 @@
                 timerCard.classList.remove('focus-mode');
                 appBody.removeEventListener('click', handleBodyClick);
                 updateProgressInfo();
-                updateBackgroundStatus(false);
+                updateBackgroundStatus();
             };
             
             const handleBodyClick = (event) => {
@@ -469,19 +472,22 @@
                 isActive = true;
                 startPauseBtn.textContent = '一時停止';
                 enterFocusMode();
-                
+
                 endTime = performance.now() + timeRemaining * 1000;
 
                 cancelAnimationFrame(animationFrameId);
                 animationFrameId = requestAnimationFrame(animationLoop);
 
                 startBackgroundNotifications();
+                updateMediaSession(timeRemaining);
 
                 Tone.start().catch(e => console.error("Tone.jsの開始に失敗しました:", e));
                 logicTimerInterval = setInterval(() => {
                     const remainingSeconds = Math.max(0, (endTime - performance.now()) / 1000);
                     updateDigitalDisplay(remainingSeconds);
+                    timeRemaining = remainingSeconds;
                     updateBackgroundNotification(remainingSeconds);
+                    updateMediaSession(remainingSeconds);
 
                     if (remainingSeconds <= 0) {
                         timeRemaining = 0;
@@ -508,7 +514,8 @@
                 stopBackgroundNotifications();
 
                 timeRemaining = Math.max(0, (endTime - performance.now()) / 1000);
-                
+                updateMediaSession(timeRemaining);
+
                 if (!keepFocus) {
                     hideSessionNotification();
                 }
@@ -520,6 +527,7 @@
                 updateDigitalDisplay(timeRemaining);
                 updateVisualDisplay(timeRemaining * 1000);
                 if (!keepFocus) updateProgressInfo();
+                updateMediaSession(timeRemaining);
             }
 
             function switchMode(newMode, keepFocus = false) {
@@ -527,6 +535,7 @@
                 resetTimer(keepFocus);
                 updateUIForMode(newMode);
                 startBackgroundNotifications();
+                updateMediaSession(timeRemaining);
             }
             
             function handleTimerEnd() {
@@ -540,6 +549,8 @@
                     completedSessionsDisplay.textContent = `${cumulativePomodoroCount} セッション`;
                     completedTimeDisplay.textContent = formatTime(cumulativeElapsedTime);
                     stopBackgroundNotifications();
+                    isActive = false;
+                    updateMediaSession(0);
                     mainTimerScreen.classList.add('hidden');
                     goalCompletedScreen.classList.remove('hidden');
                     return;
@@ -613,20 +624,61 @@
                 }
             }
 
+            // --- Media Session / Mini Player ---
+            function updateMediaSession(remainingSeconds = timeRemaining) {
+                if (!SUPPORTS_MEDIA_SESSION) return;
+
+                const clampedRemaining = Math.max(0, remainingSeconds);
+                const elapsed = Math.min(DURATION[mode], Math.max(0, DURATION[mode] - clampedRemaining));
+
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: `${SESSION_NAMES[mode]}タイマー`,
+                    artist: isActive ? '進行中' : '一時停止中',
+                    album: 'ポモドーロタイマー',
+                    artwork: [
+                        { src: MINI_PLAYER_ARTWORK, sizes: '96x96', type: 'image/svg+xml' },
+                    ],
+                });
+
+                if (navigator.mediaSession.setPositionState) {
+                    navigator.mediaSession.setPositionState({
+                        duration: DURATION[mode],
+                        position: elapsed,
+                        playbackRate: 1,
+                    });
+                }
+
+                navigator.mediaSession.playbackState = isActive ? 'playing' : 'paused';
+
+                if (!mediaSessionInitialized && navigator.mediaSession.setActionHandler) {
+                    navigator.mediaSession.setActionHandler('play', () => { if (!isActive) startTimer(); });
+                    navigator.mediaSession.setActionHandler('pause', () => { if (isActive) pauseTimer(true); });
+                    navigator.mediaSession.setActionHandler('stop', () => { pauseTimer(true); resetTimer(true); });
+                    navigator.mediaSession.setActionHandler('nexttrack', () => {
+                        if (isActive) pauseTimer(true);
+                        handleTimerEnd();
+                    });
+                    mediaSessionInitialized = true;
+                }
+            }
+
             // --- Background Notification Control ---
             function updateBackgroundStatus(forceShow = false) {
                 if (!SUPPORTS_NOTIFICATIONS) return;
-                const shouldShow = forceShow || Notification.permission !== 'denied';
+                const permission = Notification.permission;
+                const shouldShow = forceShow || permission !== 'granted';
                 backgroundStatus.classList.toggle('hidden', !shouldShow);
 
-                if (Notification.permission === 'granted') {
-                    backgroundStatusText.textContent = 'バックグラウンド通知で残り時間を表示中 (ロック画面にも表示されます)';
+                if (!shouldShow) return;
+
+                if (permission === 'granted') {
+                    backgroundStatusText.textContent = 'バックグラウンドのミニプレーヤーとロック画面表示が有効になりました。';
                     enableNotificationsBtn.classList.add('hidden');
-                } else if (Notification.permission === 'default') {
-                    backgroundStatusText.textContent = 'バックグラウンド通知を有効にすると、ロック画面でも残り時間を確認できます。';
+                } else if (permission === 'default') {
+                    backgroundStatusText.textContent = 'バックグラウンドではミニプレーヤーとして表示され、ロック画面でもタイマーを確認できます。通知を許可してください。';
                     enableNotificationsBtn.classList.remove('hidden');
                 } else {
-                    backgroundStatusText.textContent = '通知がブロックされています。ブラウザ設定から許可してください。';
+                    backgroundStatusText.textContent = '通知がブロックされています。ミニプレーヤー表示のためにブラウザ設定から許可してください。';
                     enableNotificationsBtn.classList.add('hidden');
                 }
             }
@@ -791,6 +843,7 @@
             // --- Initial Setup ---
             goalInput.dispatchEvent(new Event('input')); // Calculate initial total time
             updateBackgroundStatus();
+            updateMediaSession(timeRemaining);
         });
     </script>
 </body>
